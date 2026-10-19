@@ -1,0 +1,10 @@
+*.py[codz]
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pdm-python
+__pypackages__/
+data/corpus/
+data/feature/
+data/model/
