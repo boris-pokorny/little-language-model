@@ -15,12 +15,13 @@ from collections import Counter
 from pathlib import Path
 
 from llm.log import setup_logging
+from llm.params import load_params
 
 log = logging.getLogger(__name__)
 
 VOCAB_PATH = Path("data/feature/vocab.json")
 MERGES_PATH = Path("data/feature/merges.txt")
-NUM_MERGES = 1000
+NUM_MERGES = 1000  # default; params.yaml extract.num_merges overrides
 
 
 def count_pairs(vocab: dict[str, int]) -> Counter[tuple[str, str]]:
@@ -51,10 +52,11 @@ def merge_pair(pair: tuple[str, str], vocab: dict[str, int]) -> dict[str, int]:
 
 def main() -> None:
     setup_logging()
+    num_merges: int = load_params("extract", {"num_merges": NUM_MERGES})["num_merges"]
     vocab: dict[str, int] = json.loads(VOCAB_PATH.read_text())
 
     merges: list[tuple[str, str]] = []
-    for step in range(NUM_MERGES):
+    for step in range(num_merges):
         pairs = count_pairs(vocab)
         if not pairs:
             break

@@ -7,6 +7,11 @@ never touch the PDFs again. Each word also becomes a space-separated
 character sequence terminated by the end-of-word marker </w>
 (Sennrich et al. 2016), mapped to its corpus count, in VOCAB_PATH.
 
+Pages listed under `ingest.exclude_pages` in params.yaml (1-based inclusive
+ranges per file name) are skipped: the held-out benchmark text in data/bench/
+was carved from them and must never be trained on. data/bench/ itself is not
+read here.
+
 Usage:
     pdm run ingest        # data/corpus/*.pdf -> corpus text + word vocabulary
 """
@@ -20,6 +25,7 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from llm.log import setup_logging
+from llm.params import load_params
 
 log = logging.getLogger(__name__)
 
@@ -37,10 +43,19 @@ def corpus_pdfs() -> list[Path]:
     return pdfs
 
 
-def extract_pages(pdf_path: Path) -> list[str]:
-    """One string per page, reduced to lowercase words."""
+def excluded_pages(ranges: list[list[int]]) -> set[int]:
+    """Expand [[first, last], ...] (1-based, inclusive) into a set of page numbers."""
+    return {n for first, last in ranges for n in range(first, last + 1)}
+
+
+def extract_pages(pdf_path: Path, skip: set[int] = frozenset()) -> list[str]:
+    """One string per page, reduced to lowercase words; 1-based pages in `skip` are dropped."""
     reader = PdfReader(pdf_path)
-    return [" ".join(WORD_RE.findall((page.extract_text() or "").lower())) for page in reader.pages]
+    return [
+        " ".join(WORD_RE.findall((page.extract_text() or "").lower()))
+        for n, page in enumerate(reader.pages, 1)
+        if n not in skip
+    ]
 
 
 def build_vocab(words: list[str]) -> Counter[str]:
@@ -49,10 +64,15 @@ def build_vocab(words: list[str]) -> Counter[str]:
 
 def main() -> None:
     setup_logging()
+    exclude: dict[str, list[list[int]]] = load_params("ingest", {"exclude_pages": {}})["exclude_pages"] or {}
+    pdfs = corpus_pdfs()
+    for stale in sorted(set(exclude) - {pdf.name for pdf in pdfs}):
+        log.warning(f"ingest.exclude_pages in params.yaml names {stale!r}, which is not in {CORPUS_DIR}/ - ignored")
     pages: list[str] = []
-    for pdf in corpus_pdfs():
-        pdf_pages = extract_pages(pdf)
-        log.info(f"{pdf.name}: {len(pdf_pages)} pages")
+    for pdf in pdfs:
+        skip = excluded_pages(exclude.get(pdf.name, []))
+        pdf_pages = extract_pages(pdf, skip)
+        log.info(f"{pdf.name}: {len(pdf_pages)} pages" + (f" ({len(skip)} excluded)" if skip else ""))
         pages.extend(pdf_pages)
 
     CORPUS_PATH.parent.mkdir(parents=True, exist_ok=True)

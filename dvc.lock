@@ -1,0 +1,219 @@
+schema: '2.0'
+stages:
+  ingest:
+    cmd: pdm run ingest
+    deps:
+    - path: data/corpus
+      hash: md5
+      md5: fd997db15e4882c49e1a500e40a61df4.dir
+      size: 1556484
+      nfiles: 1
+    - path: llm/ingest_words.py
+      hash: md5
+      md5: e78abc69504d881a83fa8675b618c6b1
+      size: 3224
+    - path: llm/params.py
+      hash: md5
+      md5: b1b2e586e314358dd4c04282cb7a1fd2
+      size: 777
+    params:
+      params.yaml:
+        ingest:
+          exclude_pages:
+            think-and-grow-rich-napoleon-hill.pdf:
+            - - 228
+              - 253
+    outs:
+    - path: data/feature/corpus.txt
+      hash: md5
+      md5: 18fc1d9c47e079c4070a126d8ece586a
+      size: 497143
+    - path: data/feature/vocab.json
+      hash: md5
+      md5: 547ee5e0f5c9425f154fbfeb616ddb95
+      size: 185922
+  extract:
+    cmd: pdm run extract
+    deps:
+    - path: data/feature/vocab.json
+      hash: md5
+      md5: 547ee5e0f5c9425f154fbfeb616ddb95
+      size: 185922
+    - path: llm/extract_merges.py
+      hash: md5
+      md5: 33c4c234926a0c9a6fc6d50c499a1b5c
+      size: 2714
+    - path: llm/params.py
+      hash: md5
+      md5: b1b2e586e314358dd4c04282cb7a1fd2
+      size: 777
+    params:
+      params.yaml:
+        extract:
+          num_merges: 1000
+    outs:
+    - path: data/feature/merges.txt
+      hash: md5
+      md5: 3a96a75ddfc3619668a2392f45196aa5
+      size: 7978
+  tokenize:
+    cmd: pdm run tokenize
+    deps:
+    - path: data/feature/corpus.txt
+      hash: md5
+      md5: 18fc1d9c47e079c4070a126d8ece586a
+      size: 497143
+    - path: data/feature/merges.txt
+      hash: md5
+      md5: 3a96a75ddfc3619668a2392f45196aa5
+      size: 7978
+    - path: llm/ingest_words.py
+      hash: md5
+      md5: e78abc69504d881a83fa8675b618c6b1
+      size: 3224
+    - path: llm/tokenize_text.py
+      hash: md5
+      md5: 821bdf1de7ef970205cd04d86cbe2efc
+      size: 2809
+    outs:
+    - path: data/feature/tokens.txt
+      hash: md5
+      md5: b88c0d81d0ca319fb94fc0cdda79dc40
+      size: 899727
+  train:
+    cmd: pdm run train
+    deps:
+    - path: data/feature/merges.txt
+      hash: md5
+      md5: 3a96a75ddfc3619668a2392f45196aa5
+      size: 7978
+    - path: data/feature/tokens.txt
+      hash: md5
+      md5: b88c0d81d0ca319fb94fc0cdda79dc40
+      size: 899727
+    - path: llm/backend.py
+      hash: md5
+      md5: 32140a5a1b7e74f0ffbf356008eaa499
+      size: 1577
+    - path: llm/model.py
+      hash: md5
+      md5: 0ba983fc4ee927898649df819296a535
+      size: 3230
+    - path: llm/params.py
+      hash: md5
+      md5: b1b2e586e314358dd4c04282cb7a1fd2
+      size: 777
+    - path: llm/provenance.py
+      hash: md5
+      md5: 5ccedfdc23800599b1c2b06282005d40
+      size: 1947
+    - path: llm/tokenize_text.py
+      hash: md5
+      md5: 821bdf1de7ef970205cd04d86cbe2efc
+      size: 2809
+    - path: llm/train_model.py
+      hash: md5
+      md5: 69e782a3f253ddccef0ef0b40bbf13f6
+      size: 7792
+    params:
+      params.yaml:
+        train:
+          steps: 5000
+          patience: 5
+          batch_size: 32
+          lr: 0.0003
+          eval_interval: 100
+          split: 0.9
+          seed: 1337
+          model:
+            block_size: 64
+            n_layer: 4
+            n_head: 4
+            d_model: 128
+            dropout: 0.1
+    outs:
+    - path: data/model/model.json
+      hash: md5
+      md5: 6b14713eb893968b241074a907da3e93
+      size: 882
+    - path: data/model/model.pt
+      hash: md5
+      md5: 99c7d8c4e9d4dac008209eae866338d0
+      size: 4270926
+  evaluate:
+    cmd: pdm run evaluate
+    deps:
+    - path: data/bench
+      hash: md5
+      md5: 0ff5255b7e8e0e5e833faffead648077.dir
+      size: 55636
+      nfiles: 3
+    - path: data/feature/merges.txt
+      hash: md5
+      md5: 3a96a75ddfc3619668a2392f45196aa5
+      size: 7978
+    - path: data/feature/tokens.txt
+      hash: md5
+      md5: b88c0d81d0ca319fb94fc0cdda79dc40
+      size: 899727
+    - path: data/feature/vocab.json
+      hash: md5
+      md5: 547ee5e0f5c9425f154fbfeb616ddb95
+      size: 185922
+    - path: data/model/model.pt
+      hash: md5
+      md5: 99c7d8c4e9d4dac008209eae866338d0
+      size: 4270926
+    - path: llm/backend.py
+      hash: md5
+      md5: 32140a5a1b7e74f0ffbf356008eaa499
+      size: 1577
+    - path: llm/chat.py
+      hash: md5
+      md5: abbd96d8f878e9dba1013fb3449251ad
+      size: 8266
+    - path: llm/evaluate.py
+      hash: md5
+      md5: f31b2770e3e87f0eae0ab05a3d397fdd
+      size: 7780
+    - path: llm/model.py
+      hash: md5
+      md5: 0ba983fc4ee927898649df819296a535
+      size: 3230
+    - path: llm/params.py
+      hash: md5
+      md5: b1b2e586e314358dd4c04282cb7a1fd2
+      size: 777
+    - path: llm/provenance.py
+      hash: md5
+      md5: 5ccedfdc23800599b1c2b06282005d40
+      size: 1947
+    - path: llm/tokenize_text.py
+      hash: md5
+      md5: 821bdf1de7ef970205cd04d86cbe2efc
+      size: 2809
+    - path: llm/train_model.py
+      hash: md5
+      md5: 69e782a3f253ddccef0ef0b40bbf13f6
+      size: 7792
+    params:
+      params.yaml:
+        evaluate:
+          batch_size: 32
+          seed: 1337
+          sample_length: 40
+          prompts_path: data/bench/prompts.txt
+        train.split: 0.9
+    outs:
+    - path: metrics/eval.json
+      hash: md5
+      md5: 6b44bda437bc1fe02ec081bc1f68d793
+      size: 355
+    - path: metrics/eval_meta.json
+      hash: md5
+      md5: 9f36b816cdcda9e01f5a2104cf31e325
+      size: 1589
+    - path: metrics/samples.md
+      hash: md5
+      md5: 79709fafa65a0a3debbce26a747ceca9
+      size: 4525

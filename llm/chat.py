@@ -1,8 +1,8 @@
 """Model evaluation and inference: evaluate the trained model and sample from it interactively.
 
-Loads the trained checkpoint (from the training stage), reports loss/perplexity
-on the held-out 10% of the corpus, then reads prompts from stdin and prints
-continuations. The model is a plain next-token LM, so it continues your
+Loads the trained checkpoint (from the training stage), reports the same
+deterministic val loss / benchmark numbers as `pdm run evaluate`, then reads
+prompts from stdin and prints continuations. The model is a plain next-token LM, so it continues your
 prompt rather than answering it.
 
 Decoding filters (all on by default; see --help to relax them):
@@ -32,7 +32,7 @@ from llm.ingest_words import VOCAB_PATH
 from llm.log import setup_logging
 from llm.model import GPTConfig, TinyGPT
 from llm.tokenize_text import tokenize, tokenize_word
-from llm.train_model import MODEL_PATH, detokenize, estimate_loss, load_corpus
+from llm.train_model import MODEL_PATH, detokenize
 
 log = logging.getLogger(__name__)
 
@@ -176,10 +176,12 @@ def main() -> None:
     stoi = {tok: i for i, tok in enumerate(itos)}
 
     if not args.no_eval:
-        data, _ = load_corpus()
-        val_data = data[int(0.9 * len(data)) :]
-        loss = estimate_loss(model, val_data, backend, batch_size=32, iters=50)
-        log.info(f"val loss {loss:.3f}  perplexity {math.exp(loss):.1f}  (uniform = {len(itos)})")
+        from llm.evaluate import evaluate_model  # lazy: evaluate imports this module
+
+        metrics = evaluate_model(model, itos, backend, batch_size=32)
+        log.info(f"val loss {metrics['val_loss']:.3f}  perplexity {metrics['val_ppl']:.1f}  (uniform = {len(itos)})")
+        for name, m in metrics["bench"].items():
+            log.info(f"{name}: word_ppl {m['word_ppl']:.1f}  bpc {m['bpc']:.3f}")
 
     logits_filter = build_logits_filter(itos, args)
 

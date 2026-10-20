@@ -5,6 +5,3 @@ __pycache__/
 .ruff_cache/
 .pdm-python
 __pypackages__/
-data/corpus/
-data/feature/
-data/model/

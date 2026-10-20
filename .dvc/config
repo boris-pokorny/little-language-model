@@ -1,0 +1,8 @@
+[core]
+    autostage = true
+    analytics = false
+# Artifacts stay in the local cache (.dvc/cache) for now. To share them, enable a
+# remote and run `dvc push` / `dvc pull`. One of:
+#   dvc remote add -d store ~/dvc-store                 # local directory
+#   dvc remote add -d store s3://bucket/llm             # S3 (pdm add -dG dev 'dvc[s3]')
+#   dvc remote add -d store ssh://host/srv/dvc-store    # SSH

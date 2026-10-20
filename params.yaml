@@ -1,0 +1,33 @@
+# Single source of truth for pipeline parameters. DVC tracks the section each
+# stage declares in dvc.yaml, so a changed value re-runs exactly that stage and
+# everything downstream. Stage CLIs read these as defaults; flags still override.
+
+ingest:
+  # Pages (1-based, inclusive ranges) to leave out of training per PDF file name.
+  # Those of the first book form the frozen benchmark data/bench/holdout-v1.txt.
+  exclude_pages:
+    think-and-grow-rich-napoleon-hill.pdf: [[228, 253]]
+
+extract:
+  num_merges: 1000
+
+train:
+  steps: 5000
+  patience: 5
+  batch_size: 32
+  lr: 3.0e-4
+  eval_interval: 100
+  split: 0.9
+  seed: 1337
+  model:
+    block_size: 64
+    n_layer: 4
+    n_head: 4
+    d_model: 128
+    dropout: 0.1
+
+evaluate:
+  batch_size: 32
+  seed: 1337
+  sample_length: 40
+  prompts_path: data/bench/prompts.txt

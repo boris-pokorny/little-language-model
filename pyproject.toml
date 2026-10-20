@@ -1,11 +1,11 @@
 [project]
 name = "little-language-model"
-version = "0.1.0"
+version = "0.2.0"
 description = "A little language model from scratch in plain PyTorch: BPE tokenizer + tiny transformer"
 authors = [
     {name = "boris", email = "boris.pokorny@centrum.cz"},
 ]
-dependencies = ["pypdf>=6.16.1", "torch>=2.6", "numpy>=2.5.3"]
+dependencies = ["pypdf>=6.16.1", "torch>=2.6", "numpy>=2.5.3", "pyyaml>=6.0.3"]
 requires-python = "==3.13.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -19,10 +19,18 @@ ingest = "python -m llm.ingest_words"
 extract = "python -m llm.extract_merges"
 tokenize = "python -m llm.tokenize_text"
 train = "python -m llm.train_model"
+evaluate = "python -m llm.evaluate"
 chat = "python -m llm.chat"
 agent = "python -m llm.agent"
+repro = "dvc repro"
+compare = "dvc metrics diff"
 
 [[tool.pdm.source]]
 name = "torch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
 include_packages = ["torch"]
+
+[dependency-groups]
+dev = [
+    "dvc>=3.67.1",
+]

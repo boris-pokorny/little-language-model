@@ -1,0 +1,56 @@
+{
+  "provenance": {
+    "pipeline_version": "0.2.0",
+    "git": {
+      "commit": "9f9b23b336b82ff763666620be5ab8c1b9128e1f",
+      "dirty": true
+    },
+    "inputs": {
+      "model": "9184a7f8c8fc381da336c3678bbfa8150c981001fc2acc8e9bb389e6e0bfc638",
+      "merges": "c598432a676d202d3e56d7c25f801e29544e8c173b7c5647389125f6b93e1c5e",
+      "tokens": "137b5fe243963825a8408e03d5ec0e7cdcfabe02b36a194107b96bb1dc213d02",
+      "holdout-v1.txt": "54a3ceaa6e84a0f8cbf6bc040a6a33683b736cd893d91fe0328d5fae12848c29"
+    },
+    "python": "3.13.2",
+    "torch": "2.14.0+cpu",
+    "created_at": "2026-10-20T13:25:47+00:00"
+  },
+  "model": {
+    "provenance": {
+      "pipeline_version": "0.2.0",
+      "git": {
+        "commit": "9f9b23b336b82ff763666620be5ab8c1b9128e1f",
+        "dirty": true
+      },
+      "inputs": {
+        "tokens": "137b5fe243963825a8408e03d5ec0e7cdcfabe02b36a194107b96bb1dc213d02",
+        "merges": "c598432a676d202d3e56d7c25f801e29544e8c173b7c5647389125f6b93e1c5e"
+      },
+      "python": "3.13.2",
+      "torch": "2.14.0+cpu",
+      "created_at": "2026-10-20T13:25:45+00:00"
+    },
+    "params": {
+      "steps": 5000,
+      "patience": 5,
+      "batch_size": 32,
+      "lr": 0.0003,
+      "eval_interval": 100,
+      "split": 0.9,
+      "seed": 1337,
+      "model": {
+        "block_size": 64,
+        "n_layer": 4,
+        "n_head": 4,
+        "d_model": 128,
+        "dropout": 0.1
+      }
+    },
+    "n_params": 1059840,
+    "train_tokens": 125173,
+    "val_tokens": 13909,
+    "steps_run": 3600,
+    "best_val_loss": 4.153174924850464,
+    "device": "cpu"
+  }
+}

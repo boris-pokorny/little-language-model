@@ -1,0 +1,90 @@
+# Pipeline definition. `dvc repro` re-runs a stage when any dep, param or the
+# stage code changes and records content hashes of everything in dvc.lock, so a
+# git commit of dvc.lock pins data, tokenizer, model, code and params together.
+stages:
+  ingest:
+    cmd: pdm run ingest
+    deps:
+      - llm/ingest_words.py
+      - llm/params.py
+      - data/corpus
+    params:
+      - ingest
+    outs:
+      - data/feature/corpus.txt
+      - data/feature/vocab.json
+
+  extract:
+    cmd: pdm run extract
+    deps:
+      - llm/extract_merges.py
+      - llm/params.py
+      - data/feature/vocab.json
+    params:
+      - extract
+    outs:
+      - data/feature/merges.txt
+
+  tokenize:
+    cmd: pdm run tokenize
+    deps:
+      - llm/tokenize_text.py
+      - llm/ingest_words.py
+      - data/feature/corpus.txt
+      - data/feature/merges.txt
+    outs:
+      - data/feature/tokens.txt
+
+  train:
+    cmd: pdm run train
+    deps:
+      - llm/train_model.py
+      - llm/model.py
+      - llm/backend.py
+      - llm/params.py
+      - llm/provenance.py
+      - llm/tokenize_text.py
+      - data/feature/tokens.txt
+      - data/feature/merges.txt
+    params:
+      - train
+    outs:
+      - data/model/model.pt
+      - data/model/model.json:
+          cache: false
+
+  evaluate:
+    cmd: pdm run evaluate
+    deps:
+      - llm/evaluate.py
+      - llm/chat.py
+      - llm/model.py
+      - llm/backend.py
+      - llm/params.py
+      - llm/provenance.py
+      - llm/tokenize_text.py
+      - llm/train_model.py
+      - data/model/model.pt
+      - data/feature/merges.txt
+      - data/feature/tokens.txt
+      - data/feature/vocab.json
+      - data/bench
+    params:
+      - evaluate
+      - train.split
+    metrics:
+      - metrics/eval.json:
+          cache: false
+    outs:
+      - metrics/eval_meta.json:
+          cache: false
+      - metrics/samples.md:
+          cache: false
+
+# Model registry hook (DVC >= 3): `dvc artifacts get . tinygpt --rev model-v1`,
+# or manage stages/versions with GTO (`gto register tinygpt`).
+artifacts:
+  tinygpt:
+    path: data/model/model.pt
+    type: model
+    desc: TinyGPT trained on the versioned corpus; see data/model/model.json for provenance.
