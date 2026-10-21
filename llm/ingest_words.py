@@ -8,9 +8,11 @@ character sequence terminated by the end-of-word marker </w>
 (Sennrich et al. 2016), mapped to its corpus count, in VOCAB_PATH.
 
 Pages listed under `ingest.exclude_pages` in params.yaml (1-based inclusive
-ranges per file name) are skipped: the held-out benchmark text in data/bench/
-was carved from them and must never be trained on. data/bench/ itself is not
-read here.
+ranges per file name) are skipped: front/back matter, and the pages the
+held-out benchmark text in data/bench/ was carved from, which must never be
+trained on. data/bench/ itself is not read here. Regexes under
+`ingest.strip_phrases` (running headers, footers, ads) are removed from every
+page's text before words are extracted.
 
 Usage:
     pdm run ingest        # data/corpus/*.pdf -> corpus text + word vocabulary
@@ -48,14 +50,19 @@ def excluded_pages(ranges: list[list[int]]) -> set[int]:
     return {n for first, last in ranges for n in range(first, last + 1)}
 
 
-def extract_pages(pdf_path: Path, skip: set[int] = frozenset()) -> list[str]:
-    """One string per page, reduced to lowercase words; 1-based pages in `skip` are dropped."""
+def extract_pages(pdf_path: Path, skip: set[int] = frozenset(), strip: list[re.Pattern[str]] = []) -> list[str]:
+    """One string per page, reduced to lowercase words; 1-based pages in `skip` are
+    dropped and every match of the `strip` patterns is removed first."""
     reader = PdfReader(pdf_path)
-    return [
-        " ".join(WORD_RE.findall((page.extract_text() or "").lower()))
-        for n, page in enumerate(reader.pages, 1)
-        if n not in skip
-    ]
+    pages: list[str] = []
+    for n, page in enumerate(reader.pages, 1):
+        if n in skip:
+            continue
+        text = " ".join((page.extract_text() or "").split())
+        for pattern in strip:
+            text = pattern.sub(" ", text)
+        pages.append(" ".join(WORD_RE.findall(text.lower())))
+    return pages
 
 
 def build_vocab(words: list[str]) -> Counter[str]:
@@ -64,14 +71,16 @@ def build_vocab(words: list[str]) -> Counter[str]:
 
 def main() -> None:
     setup_logging()
-    exclude: dict[str, list[list[int]]] = load_params("ingest", {"exclude_pages": {}})["exclude_pages"] or {}
+    params = load_params("ingest", {"exclude_pages": {}, "strip_phrases": []})
+    exclude: dict[str, list[list[int]]] = params["exclude_pages"] or {}
+    strip = [re.compile(p, re.IGNORECASE) for p in params["strip_phrases"] or []]
     pdfs = corpus_pdfs()
     for stale in sorted(set(exclude) - {pdf.name for pdf in pdfs}):
         log.warning(f"ingest.exclude_pages in params.yaml names {stale!r}, which is not in {CORPUS_DIR}/ - ignored")
     pages: list[str] = []
     for pdf in pdfs:
         skip = excluded_pages(exclude.get(pdf.name, []))
-        pdf_pages = extract_pages(pdf, skip)
+        pdf_pages = extract_pages(pdf, skip, strip)
         log.info(f"{pdf.name}: {len(pdf_pages)} pages" + (f" ({len(skip)} excluded)" if skip else ""))
         pages.extend(pdf_pages)
 

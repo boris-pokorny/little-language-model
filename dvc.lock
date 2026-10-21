@@ -5,13 +5,13 @@ stages:
     deps:
     - path: data/corpus
       hash: md5
-      md5: fd997db15e4882c49e1a500e40a61df4.dir
-      size: 1556484
-      nfiles: 1
+      md5: 13e62906419e68b22077a4eb90ee1a07.dir
+      size: 3712268
+      nfiles: 2
     - path: llm/ingest_words.py
       hash: md5
-      md5: e78abc69504d881a83fa8675b618c6b1
-      size: 3224
+      md5: 54486fb00b0eb41821efb9884d53e961
+      size: 3977
     - path: llm/params.py
       hash: md5
       md5: b1b2e586e314358dd4c04282cb7a1fd2
@@ -21,24 +21,35 @@ stages:
         ingest:
           exclude_pages:
             think-and-grow-rich-napoleon-hill.pdf:
+            - - 1
+              - 6
             - - 228
               - 253
+            pg79832-images-3.pdf:
+            - - 1
+              - 5
+            - - 332
+              - 339
+          strip_phrases:
+          - think & grow rich
+          - do you feel frustrated, stuck or overwhelmed by the concepts in this
+            ebook\?.*?www\.think-and-grow-rich-ebook\.com
     outs:
     - path: data/feature/corpus.txt
       hash: md5
-      md5: 18fc1d9c47e079c4070a126d8ece586a
-      size: 497143
+      md5: ca5c7d269940e577c52fc214f186cd86
+      size: 1268969
     - path: data/feature/vocab.json
       hash: md5
-      md5: 547ee5e0f5c9425f154fbfeb616ddb95
-      size: 185922
+      md5: f18cfc4057cc961fa63b4414562b5b97
+      size: 408085
   extract:
     cmd: pdm run extract
     deps:
     - path: data/feature/vocab.json
       hash: md5
-      md5: 547ee5e0f5c9425f154fbfeb616ddb95
-      size: 185922
+      md5: f18cfc4057cc961fa63b4414562b5b97
+      size: 408085
     - path: llm/extract_merges.py
       hash: md5
       md5: 33c4c234926a0c9a6fc6d50c499a1b5c
@@ -54,23 +65,23 @@ stages:
     outs:
     - path: data/feature/merges.txt
       hash: md5
-      md5: 3a96a75ddfc3619668a2392f45196aa5
-      size: 7978
+      md5: c8ad6243b938eaf931aa427f1806fa52
+      size: 7604
   tokenize:
     cmd: pdm run tokenize
     deps:
     - path: data/feature/corpus.txt
       hash: md5
-      md5: 18fc1d9c47e079c4070a126d8ece586a
-      size: 497143
+      md5: ca5c7d269940e577c52fc214f186cd86
+      size: 1268969
     - path: data/feature/merges.txt
       hash: md5
-      md5: 3a96a75ddfc3619668a2392f45196aa5
-      size: 7978
+      md5: c8ad6243b938eaf931aa427f1806fa52
+      size: 7604
     - path: llm/ingest_words.py
       hash: md5
-      md5: e78abc69504d881a83fa8675b618c6b1
-      size: 3224
+      md5: 54486fb00b0eb41821efb9884d53e961
+      size: 3977
     - path: llm/tokenize_text.py
       hash: md5
       md5: 821bdf1de7ef970205cd04d86cbe2efc
@@ -78,19 +89,19 @@ stages:
     outs:
     - path: data/feature/tokens.txt
       hash: md5
-      md5: b88c0d81d0ca319fb94fc0cdda79dc40
-      size: 899727
+      md5: 9d0750464f9eec5bb511b890992ac0f1
+      size: 2354696
   train:
     cmd: pdm run train
     deps:
     - path: data/feature/merges.txt
       hash: md5
-      md5: 3a96a75ddfc3619668a2392f45196aa5
-      size: 7978
+      md5: c8ad6243b938eaf931aa427f1806fa52
+      size: 7604
     - path: data/feature/tokens.txt
       hash: md5
-      md5: b88c0d81d0ca319fb94fc0cdda79dc40
-      size: 899727
+      md5: 9d0750464f9eec5bb511b890992ac0f1
+      size: 2354696
     - path: llm/backend.py
       hash: md5
       md5: 32140a5a1b7e74f0ffbf356008eaa499
@@ -105,8 +116,8 @@ stages:
       size: 777
     - path: llm/provenance.py
       hash: md5
-      md5: 5ccedfdc23800599b1c2b06282005d40
-      size: 1947
+      md5: e9abc72b08107412a331a52a8210bfb4
+      size: 1952
     - path: llm/tokenize_text.py
       hash: md5
       md5: 821bdf1de7ef970205cd04d86cbe2efc
@@ -134,36 +145,36 @@ stages:
     outs:
     - path: data/model/model.json
       hash: md5
-      md5: 6b14713eb893968b241074a907da3e93
+      md5: 0e70407db00472b77f92b05dbb7601e8
       size: 882
     - path: data/model/model.pt
       hash: md5
-      md5: 99c7d8c4e9d4dac008209eae866338d0
-      size: 4270926
+      md5: f3af43f8b6dad297000f3017c47c7217
+      size: 4286094
   evaluate:
     cmd: pdm run evaluate
     deps:
     - path: data/bench
       hash: md5
-      md5: 0ff5255b7e8e0e5e833faffead648077.dir
-      size: 55636
-      nfiles: 3
+      md5: 14f36e94aab9923e9a3ca1e201500046.dir
+      size: 105536
+      nfiles: 4
     - path: data/feature/merges.txt
       hash: md5
-      md5: 3a96a75ddfc3619668a2392f45196aa5
-      size: 7978
+      md5: c8ad6243b938eaf931aa427f1806fa52
+      size: 7604
     - path: data/feature/tokens.txt
       hash: md5
-      md5: b88c0d81d0ca319fb94fc0cdda79dc40
-      size: 899727
+      md5: 9d0750464f9eec5bb511b890992ac0f1
+      size: 2354696
     - path: data/feature/vocab.json
       hash: md5
-      md5: 547ee5e0f5c9425f154fbfeb616ddb95
-      size: 185922
+      md5: f18cfc4057cc961fa63b4414562b5b97
+      size: 408085
     - path: data/model/model.pt
       hash: md5
-      md5: 99c7d8c4e9d4dac008209eae866338d0
-      size: 4270926
+      md5: f3af43f8b6dad297000f3017c47c7217
+      size: 4286094
     - path: llm/backend.py
       hash: md5
       md5: 32140a5a1b7e74f0ffbf356008eaa499
@@ -174,8 +185,8 @@ stages:
       size: 8266
     - path: llm/evaluate.py
       hash: md5
-      md5: f31b2770e3e87f0eae0ab05a3d397fdd
-      size: 7780
+      md5: 6f26f3b7fc9e0dfa710445e9bcb22123
+      size: 7815
     - path: llm/model.py
       hash: md5
       md5: 0ba983fc4ee927898649df819296a535
@@ -186,8 +197,8 @@ stages:
       size: 777
     - path: llm/provenance.py
       hash: md5
-      md5: 5ccedfdc23800599b1c2b06282005d40
-      size: 1947
+      md5: e9abc72b08107412a331a52a8210bfb4
+      size: 1952
     - path: llm/tokenize_text.py
       hash: md5
       md5: 821bdf1de7ef970205cd04d86cbe2efc
@@ -205,15 +216,15 @@ stages:
           prompts_path: data/bench/prompts.txt
         train.split: 0.9
     outs:
-    - path: metrics/eval.json
+    - path: data/metrics/eval.json
       hash: md5
-      md5: 6b44bda437bc1fe02ec081bc1f68d793
-      size: 355
-    - path: metrics/eval_meta.json
+      md5: 27008000cd8b262a2f231073ecd6326c
+      size: 596
+    - path: data/metrics/eval_meta.json
       hash: md5
-      md5: 9f36b816cdcda9e01f5a2104cf31e325
-      size: 1589
-    - path: metrics/samples.md
+      md5: 33003960e8b0635a68cff71c107c19a4
+      size: 1681
+    - path: data/metrics/samples.md
       hash: md5
-      md5: 79709fafa65a0a3debbce26a747ceca9
-      size: 4525
+      md5: 147bec47963451993cf007ca994f31bd
+      size: 4071

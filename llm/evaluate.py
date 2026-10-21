@@ -13,10 +13,10 @@ random batches), and reported three ways:
 plus the OOV rate (benchmark tokens the model's vocabulary lacks; they are
 dropped from scoring) and the in-distribution val loss on the training split.
 The prompts in data/bench/prompts.txt are continued greedily and by seeded
-sampling into metrics/samples.md for a qualitative diff.
+sampling into data/metrics/samples.md for a qualitative diff.
 
-Outputs: metrics/eval.json (numbers only, tracked by DVC as metrics),
-metrics/eval_meta.json (provenance + the model's own meta), metrics/samples.md.
+Outputs: data/metrics/eval.json (numbers only, tracked by DVC as metrics),
+data/metrics/eval_meta.json (provenance + the model's own meta), data/metrics/samples.md.
 
 Usage:
     pdm run evaluate [--device cpu|cuda|mps]
@@ -44,9 +44,9 @@ from llm.train_model import MODEL_PATH, TOKENS_PATH, detokenize, load_corpus, sp
 log = logging.getLogger(__name__)
 
 BENCH_DIR = Path("data/bench")
-METRICS_PATH = Path("metrics/eval.json")
-META_PATH = Path("metrics/eval_meta.json")
-SAMPLES_PATH = Path("metrics/samples.md")
+METRICS_PATH = Path("data/metrics/eval.json")
+META_PATH = Path("data/metrics/eval_meta.json")
+SAMPLES_PATH = Path("data/metrics/samples.md")
 
 DEFAULTS = {"batch_size": 32, "seed": 1337, "sample_length": 40, "prompts_path": "data/bench/prompts.txt"}
 

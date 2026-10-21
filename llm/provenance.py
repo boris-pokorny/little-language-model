@@ -3,7 +3,7 @@
 Collects the pipeline version (pyproject.toml), the git commit and whether the
 tree was dirty, content hashes of the inputs that went in, library versions and
 a timestamp. Tolerant of running outside git. Everything is plain JSON-able so
-it can live inside model.pt, model.json and metrics/eval.json alike.
+it can live inside model.pt, model.json and data/metrics/eval.json alike.
 """
 
 import hashlib

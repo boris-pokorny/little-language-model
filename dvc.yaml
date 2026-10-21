@@ -73,12 +73,12 @@ stages:
       - evaluate
       - train.split
     metrics:
-      - metrics/eval.json:
+      - data/metrics/eval.json:
           cache: false
     outs:
-      - metrics/eval_meta.json:
+      - data/metrics/eval_meta.json:
           cache: false
-      - metrics/samples.md:
+      - data/metrics/samples.md:
           cache: false
 
 # Model registry hook (DVC >= 3): `dvc artifacts get . tinygpt --rev model-v1`,

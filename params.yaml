@@ -3,10 +3,17 @@
 # everything downstream. Stage CLIs read these as defaults; flags still override.
 
 ingest:
-  # Pages (1-based, inclusive ranges) to leave out of training per PDF file name.
-  # Those of the first book form the frozen benchmark data/bench/holdout-v1.txt.
+  # Pages (1-based, inclusive ranges) to leave out of training per PDF file name:
+  # front/back matter (title pages, contents, Project Gutenberg license) and, for
+  # the first book, pages 228-253 which form the frozen benchmark data/bench/holdout-v1.txt.
   exclude_pages:
-    think-and-grow-rich-napoleon-hill.pdf: [[228, 253]]
+    think-and-grow-rich-napoleon-hill.pdf: [[1, 6], [228, 253]]
+    pg79832-images-3.pdf: [[1, 5], [332, 339]]
+  # Regexes (case-insensitive) removed from every page's text before words are
+  # extracted: running headers, footers and ads that repeat on each page.
+  strip_phrases:
+    - 'think & grow rich'
+    - 'do you feel frustrated, stuck or overwhelmed by the concepts in this ebook\?.*?www\.think-and-grow-rich-ebook\.com'
 
 extract:
   num_merges: 1000

@@ -2,16 +2,16 @@
   "provenance": {
     "pipeline_version": "0.2.0",
     "git": {
-      "commit": "9f9b23b336b82ff763666620be5ab8c1b9128e1f",
+      "commit": "d5cd579775259d50bd9a138bc000e2c4f5d28cf2",
       "dirty": true
     },
     "inputs": {
-      "tokens": "137b5fe243963825a8408e03d5ec0e7cdcfabe02b36a194107b96bb1dc213d02",
-      "merges": "c598432a676d202d3e56d7c25f801e29544e8c173b7c5647389125f6b93e1c5e"
+      "tokens": "e4f79436e3ab5b5ac5c2852a5a45c15a518c015047caecb2f28c1974f2029e09",
+      "merges": "d6fc204942b7672d423019c06da7d82b39d88d0b206f4acf3a2f51f1a627ec2b"
     },
     "python": "3.13.2",
     "torch": "2.14.0+cpu",
-    "created_at": "2026-10-20T13:25:45+00:00"
+    "created_at": "2026-10-21T11:24:34+00:00"
   },
   "params": {
     "steps": 5000,
@@ -29,10 +29,10 @@
       "dropout": 0.1
     }
   },
-  "n_params": 1059840,
-  "train_tokens": 125173,
-  "val_tokens": 13909,
-  "steps_run": 3600,
-  "best_val_loss": 4.153174924850464,
+  "n_params": 1063680,
+  "train_tokens": 348683,
+  "val_tokens": 38743,
+  "steps_run": 5000,
+  "best_val_loss": 4.086974401473999,
   "device": "cpu"
 }
