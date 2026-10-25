@@ -1,6 +1,6 @@
 # little-language-model
 
-A little language model from scratch in plain PyTorch: BPE tokenizer -> transformer -> sampling.
+A little language model from scratch in plain PyTorch: BPE tokenizer -> transformer or state-space model -> sampling.
 
 Code lives in the `llm` package; the pipeline stages are run as modules via `pdm run`.
 
@@ -18,7 +18,7 @@ pdm install
 pdm run ingest                  # 1. data ingestion:         data/corpus/*.pdf -> data/feature/corpus.txt + vocab.json
 pdm run extract                 # 2. feature extraction:     build BPE merge table -> data/feature/merges.txt
 pdm run tokenize                # 3. feature transformation: tokenize corpus.txt -> data/feature/tokens.txt  (or: pdm run tokenize "some text", or pipe into pdm run tokenize -)
-pdm run train                   # 4. model training:         train TinyGPT -> data/model/model.pt (+ model.json card), print samples
+pdm run train                   # 4. model training:         train TinyGPT or TinySSM (train.model.arch) -> data/model/model.pt (+ model.json card), print samples
 pdm run evaluate                # 5. model evaluation:       score frozen benchmarks data/bench/*.txt -> data/metrics/eval.json, data/metrics/samples.md
 pdm run chat                    # 5b. inference:             same numbers as evaluate, then prompt -> continuation loop (real words only, --help for decoding knobs)
 pdm run agent "some goal"       # 6. model serving:          simplistic agent, propose K continuations -> critique -> keep best / backtrack, with corpus lookup
@@ -29,6 +29,11 @@ pdm run agent "some goal"       # 6. model serving:          simplistic agent, p
 Or run the whole thing with `pdm run repro` (= `dvc repro`), which only re-runs the stages whose inputs changed.
 
 Parameters (merge count, model size, training schedule, benchmark settings) live in `params.yaml`; CLI flags override them for one-off runs.
+`train.model.arch` picks the architecture: `gpt` (TinyGPT, a decoder-only transformer) or `ssm` (TinySSM, a selective
+state-space model: the attention + MLP pair of each block is replaced by a gated causal convolution feeding a
+token-dependent linear recurrence, with no positional embedding). Shared size knobs (`n_layer`, `d_model`, `block_size`,
+`dropout`) sit next to `arch`; each architecture's own knobs sit under `train.model.<arch>`. Both share the trainer,
+evaluator, decoding filters and checkpoint format, so the benchmarks compare architectures with everything else fixed.
 `train` auto-picks CUDA / MPS / CPU; override with `--device cpu|cuda|mps`, shorten with `--steps N`. Training keeps the best-validation weights and stops early after `--patience` evals without improvement.
 The CPU-only torch wheel is pinned in `pyproject.toml`; remove the `[[tool.pdm.source]]` block on a CUDA machine.
 
@@ -74,12 +79,12 @@ corpus, tokenizer and model of that commit.
 |---|---|---|
 | raw data (`data/corpus/`) | hash in `data/corpus.dvc` | git tag `data-vN` |
 | benchmarks (`data/bench/`) | hash in `data/bench.dvc`; files are append-only, never edited | git tag `bench-vN` |
-| tokenizer + model | hashes of every stage's deps and outs in `dvc.lock` | git tag `model-vN`, `artifacts: tinygpt` in `dvc.yaml` |
+| tokenizer + model | hashes of every stage's deps and outs in `dvc.lock` | git tag `model-vN`, `artifacts: model` in `dvc.yaml` |
 | pipeline software | `version` in `pyproject.toml`, lock file, each stage's source files as DVC deps | git tag `vX.Y.Z` |
 
 Each checkpoint is also self-describing: `data/model/model.json` (and the `meta` key inside `model.pt`) records the
-pipeline version, git commit, sha256 of the token/merge files it was trained on, all params, library versions,
-steps run and best validation loss. `data/metrics/eval_meta.json` records the same for an evaluation run.
+pipeline version, git commit, sha256 of the token/merge files it was trained on, the architecture, all params, library
+versions, steps run and best validation loss. `data/metrics/eval_meta.json` records the same for an evaluation run.
 
 **Adding data and training a new model**
 
@@ -99,6 +104,7 @@ pdm run dvc metrics diff model-v1 model-v2   # any two revisions (tags, commits,
 pdm run dvc params diff model-v1 model-v2    # what hyperparameters differed
 git diff model-v1 model-v2 -- data/corpus.dvc params.yaml   # what data / config differed
 pdm run dvc exp run -S train.lr=1e-3         # try a parameter without committing
+pdm run dvc exp run -S train.model.arch=ssm -S train.model.n_layer=7   # the state-space model at matched parameter count
 pdm run dvc exp show                         # table of experiments: params + metrics side by side
 pdm run dvc exp apply <name> / pdm run dvc exp remove   # keep or drop
 ```
@@ -114,13 +120,18 @@ are never edited, so old models keep their scores.
 ```sh
 git checkout model-v1 && pdm run dvc checkout   # data/, model.pt and metrics as they were
 pdm run chat --no-eval
-pdm run dvc artifacts get . tinygpt --rev model-v1 -o /tmp/model-v1.pt   # or fetch just the weights
+pdm run dvc artifacts get . model --rev model-v1 -o /tmp/model-v1.pt   # or fetch just the weights
 ```
 
 **Versioning the software.** Bump `version` in `pyproject.toml`, commit, tag `vX.Y.Z`. Because every stage lists
 its source files as deps, a code change invalidates exactly the stages that read it on the next `pdm run dvc repro`,
 and the pipeline version is stamped into each model card. Adding a stage means adding a block to `dvc.yaml`
 and, if it has knobs, a section to `params.yaml` read via `llm.params.load_params`.
+
+**Adding an architecture.** One module in `llm/model/`: a `ModelConfig` subclass for its knobs and a `LanguageModel`
+subclass decorated `@register("name")` that implements `forward(idx, targets) -> (logits, loss)`; `generate` is inherited.
+Import it in `llm/model/__init__.py` and add a `train.model.name` section to `params.yaml`. The trainer, evaluator,
+chat, agent and checkpoint code only know the `LanguageModel` contract and the registry, so nothing else changes.
 
 **Storage.** Artifacts live in the local `.dvc/cache`. To share them with another machine or CI, enable a remote
 (see the comments in `.dvc/config`) and use `pdm run dvc push` / `pdm run dvc pull`.
@@ -130,6 +141,9 @@ What the repo does not show:
 - LLM application work: no model APIs, RAG, embeddings, tool calling or prompt/evaluation harness.
 - Scale: two books (about 350k training tokens), a 64-token context and a 4-layer, ~1M-parameter model
   (4 MB) that trains in minutes on a CPU. The text it produces is locally plausible, not coherent.
+- Speed: the state-space scan is a plain Python loop over the 64 timesteps (no fused kernel), so `ssm` trains about
+  5x slower per step than `gpt` on a CPU, and generation re-feeds the last 64 tokens instead of carrying the recurrent state, so
+  the constant-memory inference that is the architecture's selling point is not exploited.
 - Deployment and collaboration: no service or container, no DVC remote (artifacts stay in the local cache),
   no tests or CI.
 - A real agent: `llm/agent.py` is a sample-and-rerank loop, as its own docstring says.

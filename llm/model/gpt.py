@@ -1,25 +1,21 @@
 """A tiny GPT-style decoder-only transformer.
 
-Device-agnostic: nothing here knows about CUDA/CPU. The causal mask is
-built on whatever device the input indices live on.
+The causal mask is built on whatever device the input indices live on.
 """
 
 from dataclasses import dataclass
-from typing import Callable
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+from llm.model.base import LanguageModel, ModelConfig
+from llm.model.registry import register
+
 
 @dataclass
-class GPTConfig:
-    vocab_size: int
-    block_size: int = 64
-    n_layer: int = 4
+class GPTConfig(ModelConfig):
     n_head: int = 4
-    d_model: int = 128
-    dropout: float = 0.0
 
 
 class Block(nn.Module):
@@ -43,7 +39,10 @@ class Block(nn.Module):
         return x + self.mlp(self.ln2(x))
 
 
-class TinyGPT(nn.Module):
+@register("gpt")
+class TinyGPT(LanguageModel):
+    config_cls = GPTConfig
+
     def __init__(self, cfg: GPTConfig) -> None:
         super().__init__()
         self.cfg = cfg
@@ -69,23 +68,3 @@ class TinyGPT(nn.Module):
         if targets is not None:
             loss = F.cross_entropy(logits.flatten(0, 1), targets.flatten())
         return logits, loss
-
-    @torch.no_grad()
-    def generate(
-        self,
-        idx: torch.Tensor,
-        max_new_tokens: int,
-        temperature: float = 1.0,
-        logits_filter: Callable[[torch.Tensor, torch.Tensor], torch.Tensor] | None = None,
-    ) -> torch.Tensor:
-        """Sample continuations. `logits_filter(idx, logits)` may mask logits
-        (set to -inf) given the sequence so far, e.g. top-k or a lexicon."""
-        for _ in range(max_new_tokens):
-            logits, _ = self(idx[:, -self.cfg.block_size :])
-            logits = logits[:, -1, :] / temperature
-            if logits_filter is not None:
-                logits = logits_filter(idx, logits)
-            probs = F.softmax(logits, dim=-1)
-            nxt = torch.multinomial(probs, num_samples=1)
-            idx = torch.cat([idx, nxt], dim=1)
-        return idx

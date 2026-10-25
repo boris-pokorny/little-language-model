@@ -28,11 +28,12 @@ from typing import Callable
 import torch
 
 from llm.backend import Backend, select_backend
+from llm.checkpoint import MODEL_PATH, load_checkpoint
 from llm.ingest_words import VOCAB_PATH
 from llm.log import setup_logging
-from llm.model import GPTConfig, TinyGPT
+from llm.model import LanguageModel
 from llm.tokenize_text import tokenize, tokenize_word
-from llm.train_model import MODEL_PATH, detokenize
+from llm.train_model import detokenize
 
 log = logging.getLogger(__name__)
 
@@ -130,13 +131,8 @@ def add_decoding_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--top-k", type=int, default=40, help="0 = off")
 
 
-def load_model(backend: Backend) -> tuple[TinyGPT, list[str]]:
-    if not MODEL_PATH.exists():
-        raise SystemExit(f"{MODEL_PATH} not found - run `pdm run train` first")
-    ckpt = torch.load(MODEL_PATH, map_location=backend.device)
-    model = backend.to(TinyGPT(GPTConfig(**ckpt["config"])))
-    model.load_state_dict(ckpt["model"])
-    model.eval()
+def load_model(backend: Backend) -> tuple[LanguageModel, list[str]]:
+    model, ckpt = load_checkpoint(MODEL_PATH, backend)
     return model, ckpt["itos"]
 
 

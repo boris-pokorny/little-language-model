@@ -31,7 +31,7 @@ import torch.nn.functional as F
 from llm.backend import Backend, select_backend
 from llm.chat import add_decoding_args, build_logits_filter, load_model, trim_partial_word
 from llm.log import setup_logging
-from llm.model import TinyGPT
+from llm.model import LanguageModel
 from llm.tokenize_text import TOKENS_PATH, tokenize
 from llm.train_model import detokenize
 
@@ -75,7 +75,7 @@ class Candidate:
 class Agent:
     def __init__(
         self,
-        model: TinyGPT,
+        model: LanguageModel,
         itos: list[str],
         backend: Backend,
         logits_filter,

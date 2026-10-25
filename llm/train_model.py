@@ -1,7 +1,7 @@
-"""Model training: train a tiny transformer language model on the tokenized corpus.
+"""Model training: train a tiny language model on the tokenized corpus.
 
-Reads the tokenized corpus, trains TinyGPT (model.py) on next-token
-prediction, saves the checkpoint and prints a few sampled continuations.
+Reads the tokenized corpus, trains the architecture named by `train.model.arch`
+(see llm/model: "gpt" = TinyGPT, "ssm" = TinySSM) on next-token prediction, saves the checkpoint and prints a few sampled continuations.
 
 Hyperparameters come from params.yaml (section `train`); flags override them.
 The checkpoint carries a `meta` record (provenance, params, metrics) and the
@@ -20,22 +20,17 @@ import json
 import logging
 import random
 import time
-from dataclasses import asdict
-from pathlib import Path
-
 import torch
 
 from llm.backend import Backend, select_backend
+from llm.checkpoint import MODEL_CARD_PATH, MODEL_PATH, save_checkpoint
 from llm.log import setup_logging
-from llm.model import GPTConfig, TinyGPT
+from llm.model import LanguageModel, build_model
 from llm.params import load_params
 from llm.provenance import collect
 from llm.tokenize_text import MERGES_PATH, TOKENS_PATH, tokenize
 
 log = logging.getLogger(__name__)
-
-MODEL_PATH = Path("data/model/model.pt")
-MODEL_CARD_PATH = Path("data/model/model.json")
 
 DEFAULTS = {
     "steps": 5000,
@@ -45,7 +40,15 @@ DEFAULTS = {
     "eval_interval": 100,
     "split": 0.9,
     "seed": 1337,
-    "model": {"block_size": 64, "n_layer": 4, "n_head": 4, "d_model": 128, "dropout": 0.1},
+    "model": {
+        "arch": "gpt",
+        "block_size": 64,
+        "n_layer": 4,
+        "d_model": 128,
+        "dropout": 0.1,
+        "gpt": {"n_head": 4},
+        "ssm": {"d_state": 16, "d_conv": 4, "expand": 2},
+    },
 }
 
 
@@ -87,7 +90,7 @@ def get_batch(
 
 @torch.no_grad()
 def estimate_loss(
-    model: TinyGPT, data: torch.Tensor, backend: Backend, batch_size: int, iters: int = 25
+    model: LanguageModel, data: torch.Tensor, backend: Backend, batch_size: int, iters: int = 25
 ) -> float:
     model.eval()
     losses = []
@@ -101,7 +104,7 @@ def estimate_loss(
 
 
 def train(
-    model: TinyGPT,
+    model: LanguageModel,
     train_data: torch.Tensor,
     val_data: torch.Tensor,
     backend: Backend,
@@ -152,7 +155,7 @@ def detokenize(tokens: list[str]) -> str:
 
 
 def sample(
-    model: TinyGPT, itos: list[str], backend: Backend, prompt: str, n: int, length: int
+    model: LanguageModel, itos: list[str], backend: Backend, prompt: str, n: int, length: int
 ) -> None:
     stoi = {tok: i for i, tok in enumerate(itos)}
     ids = [stoi[tok] for tok in tokenize(prompt) if tok in stoi] or [0]
@@ -162,6 +165,15 @@ def sample(
         idx = backend.to(torch.tensor([ids], dtype=torch.long))
         out = model.generate(idx, length)[0].tolist()
         log.debug(f"  {detokenize([itos[i] for i in out])}")
+
+
+def make_model(model_params: dict, vocab_size: int) -> LanguageModel:
+    """`train.model` holds the shared fields plus one sub-section per architecture;
+    only the section named by `arch` is passed on."""
+    arch = model_params["arch"]
+    sections = {k for k, v in model_params.items() if isinstance(v, dict)}
+    common = {k: v for k, v in model_params.items() if k != "arch" and k not in sections}
+    return build_model(arch, vocab_size, common, model_params.get(arch, {}))
 
 
 def main() -> None:
@@ -185,10 +197,9 @@ def main() -> None:
     train_data, val_data = split_data(data, params["split"])
     log.info(f"tokens: {len(data)}  vocab: {len(itos)}")
 
-    config = GPTConfig(vocab_size=len(itos), **params["model"])
-    model = TinyGPT(config)
+    model = make_model(params["model"], len(itos))
     n_params = sum(p.numel() for p in model.parameters())
-    log.info(f"params: {n_params / 1e6:.2f}M  initial loss ~ ln(vocab) = {torch.log(torch.tensor(len(itos))):.3f}")
+    log.info(f"arch: {params['model']['arch']}  params: {n_params / 1e6:.2f}M  initial loss ~ ln(vocab) = {torch.log(torch.tensor(len(itos))):.3f}")
 
     best_val, steps_run = train(
         model, train_data, val_data, backend,
@@ -197,6 +208,7 @@ def main() -> None:
     )
 
     meta = {
+        "arch": params["model"]["arch"],
         "provenance": collect({"tokens": TOKENS_PATH, "merges": MERGES_PATH}),
         "params": params,
         "n_params": n_params,
@@ -206,8 +218,7 @@ def main() -> None:
         "best_val_loss": best_val,
         "device": str(backend.device),
     }
-    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"model": model.state_dict(), "config": asdict(config), "itos": itos, "meta": meta}, MODEL_PATH)
+    save_checkpoint(MODEL_PATH, model, params["model"]["arch"], itos, meta)
     MODEL_CARD_PATH.write_text(json.dumps(meta, indent=2) + "\n")
     log.info(f"model written to {MODEL_PATH} (card: {MODEL_CARD_PATH})")
 

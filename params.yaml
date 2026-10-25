@@ -7,31 +7,48 @@ ingest:
   # front/back matter (title pages, contents, Project Gutenberg license) and, for
   # the first book, pages 228-253 which form the frozen benchmark data/bench/holdout-v1.txt.
   exclude_pages:
-    think-and-grow-rich-napoleon-hill.pdf: [[1, 6], [228, 253]]
-    pg79832-images-3.pdf: [[1, 5], [332, 339]]
-  # Regexes (case-insensitive) removed from every page's text before words are
-  # extracted: running headers, footers and ads that repeat on each page.
+    think-and-grow-rich-napoleon-hill.pdf:
+    - - 1
+      - 6
+    - - 228
+      - 253
+    pg79832-images-3.pdf:
+    - - 1
+      - 5
+    - - 332
+      - 339
   strip_phrases:
-    - 'think & grow rich'
-    - 'do you feel frustrated, stuck or overwhelmed by the concepts in this ebook\?.*?www\.think-and-grow-rich-ebook\.com'
-
+  - think & grow rich
+  - do you feel frustrated, stuck or overwhelmed by the concepts in this 
+    ebook\?.*?www\.think-and-grow-rich-ebook\.com
 extract:
   num_merges: 1000
 
 train:
-  steps: 5000
+  steps: 200
   patience: 5
   batch_size: 32
   lr: 3.0e-4
   eval_interval: 100
   split: 0.9
   seed: 1337
+  # Architecture (llm/model) and its size. Shared fields first; each
+  # architecture's own knobs sit under its name and only that section is used.
+  # At d_model 128 an ssm block has ~0.6x the parameters of a gpt block (no
+  # MLP), so a size-matched comparison uses n_layer 7 for ssm:
+  #   pdm run dvc exp run -S train.model.arch=ssm -S train.model.n_layer=7
   model:
+    arch: gpt          # gpt | ssm
     block_size: 64
-    n_layer: 4
-    n_head: 4
+    n_layer: 7
     d_model: 128
     dropout: 0.1
+    gpt:
+      n_head: 4
+    ssm:
+      d_state: 16      # recurrent state per channel
+      d_conv: 4        # causal conv width
+      expand: 2        # inner width = expand * d_model
 
 evaluate:
   batch_size: 32

@@ -39,7 +39,8 @@ stages:
     cmd: pdm run train
     deps:
       - llm/train_model.py
-      - llm/model.py
+      - llm/model
+      - llm/checkpoint.py
       - llm/backend.py
       - llm/params.py
       - llm/provenance.py
@@ -58,7 +59,8 @@ stages:
     deps:
       - llm/evaluate.py
       - llm/chat.py
-      - llm/model.py
+      - llm/model
+      - llm/checkpoint.py
       - llm/backend.py
       - llm/params.py
       - llm/provenance.py
@@ -81,10 +83,10 @@ stages:
       - data/metrics/samples.md:
           cache: false
 
-# Model registry hook (DVC >= 3): `dvc artifacts get . tinygpt --rev model-v1`,
-# or manage stages/versions with GTO (`gto register tinygpt`).
+# Model registry hook (DVC >= 3): `dvc artifacts get . model --rev model-v1`,
+# or manage stages/versions with GTO (`gto register model`).
 artifacts:
-  tinygpt:
+  model:
     path: data/model/model.pt
     type: model
-    desc: TinyGPT trained on the versioned corpus; see data/model/model.json for provenance.
+    desc: TinyGPT or TinySSM (train.model.arch) trained on the versioned corpus; see data/model/model.json for provenance.

@@ -33,13 +33,14 @@ import torch
 import torch.nn.functional as F
 
 from llm.backend import Backend, select_backend
-from llm.chat import add_decoding_args, build_logits_filter, load_model, trim_partial_word
+from llm.chat import add_decoding_args, build_logits_filter, trim_partial_word
+from llm.checkpoint import MODEL_PATH, load_checkpoint
 from llm.log import setup_logging
-from llm.model import TinyGPT
+from llm.model import LanguageModel
 from llm.params import load_params
 from llm.provenance import collect
 from llm.tokenize_text import MERGES_PATH, WORD_RE, tokenize
-from llm.train_model import MODEL_PATH, TOKENS_PATH, detokenize, load_corpus, split_data
+from llm.train_model import TOKENS_PATH, detokenize, load_corpus, split_data
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ DEFAULTS = {"batch_size": 32, "seed": 1337, "sample_length": 40, "prompts_path":
 
 
 @torch.no_grad()
-def total_nll(model: TinyGPT, ids: torch.Tensor, backend: Backend, batch_size: int) -> tuple[float, int]:
+def total_nll(model: LanguageModel, ids: torch.Tensor, backend: Backend, batch_size: int) -> tuple[float, int]:
     """Sum of next-token NLL over one sequential pass; returns (nll, predicted tokens)."""
     model.eval()
     block = model.cfg.block_size
@@ -75,7 +76,7 @@ def total_nll(model: TinyGPT, ids: torch.Tensor, backend: Backend, batch_size: i
     return nll, n
 
 
-def score_text(model: TinyGPT, stoi: dict[str, int], text: str, backend: Backend, batch_size: int) -> dict[str, Any]:
+def score_text(model: LanguageModel, stoi: dict[str, int], text: str, backend: Backend, batch_size: int) -> dict[str, Any]:
     words = WORD_RE.findall(text.lower())
     tokens = tokenize(text)
     known = [stoi[t] for t in tokens if t in stoi]
@@ -93,7 +94,7 @@ def score_text(model: TinyGPT, stoi: dict[str, int], text: str, backend: Backend
     }
 
 
-def val_loss(model: TinyGPT, backend: Backend, batch_size: int) -> float:
+def val_loss(model: LanguageModel, backend: Backend, batch_size: int) -> float:
     """Deterministic mean NLL on the training-time validation split."""
     split = load_params("train", {"split": 0.9})["split"]
     data, _ = load_corpus()
@@ -106,7 +107,7 @@ def bench_files() -> list[Path]:
     return sorted(p for p in BENCH_DIR.glob("*.txt") if p.name != "prompts.txt")
 
 
-def evaluate_model(model: TinyGPT, itos: list[str], backend: Backend, batch_size: int) -> dict[str, Any]:
+def evaluate_model(model: LanguageModel, itos: list[str], backend: Backend, batch_size: int) -> dict[str, Any]:
     stoi = {tok: i for i, tok in enumerate(itos)}
     loss = val_loss(model, backend, batch_size)
     metrics: dict[str, Any] = {"val_loss": loss, "val_ppl": math.exp(loss), "bench": {}}
@@ -116,7 +117,7 @@ def evaluate_model(model: TinyGPT, itos: list[str], backend: Backend, batch_size
 
 
 @torch.no_grad()
-def greedy(model: TinyGPT, idx: torch.Tensor, length: int, logits_filter) -> list[int]:
+def greedy(model: LanguageModel, idx: torch.Tensor, length: int, logits_filter) -> list[int]:
     for _ in range(length):
         logits, _ = model(idx[:, -model.cfg.block_size :])
         logits = logits_filter(idx, logits[:, -1, :])
@@ -124,7 +125,7 @@ def greedy(model: TinyGPT, idx: torch.Tensor, length: int, logits_filter) -> lis
     return idx[0].tolist()
 
 
-def write_samples(model: TinyGPT, itos: list[str], backend: Backend, prompts: list[str], length: int, seed: int) -> None:
+def write_samples(model: LanguageModel, itos: list[str], backend: Backend, prompts: list[str], length: int, seed: int) -> None:
     stoi = {tok: i for i, tok in enumerate(itos)}
     ap = argparse.ArgumentParser()
     add_decoding_args(ap)
@@ -153,8 +154,8 @@ def main() -> None:
 
     torch.manual_seed(params["seed"])
     backend = select_backend(args.device)
-    model, itos = load_model(backend)
-    ckpt_meta = torch.load(MODEL_PATH, map_location="cpu").get("meta", {})
+    model, ckpt = load_checkpoint(MODEL_PATH, backend)
+    itos, ckpt_meta = ckpt["itos"], ckpt.get("meta", {})
 
     metrics = evaluate_model(model, itos, backend, params["batch_size"])
     log.info(f"val loss {metrics['val_loss']:.3f}  perplexity {metrics['val_ppl']:.1f}")
