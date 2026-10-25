@@ -1,7 +1,7 @@
 """Model training: train a tiny language model on the tokenized corpus.
 
 Reads the tokenized corpus, trains the architecture named by `train.model.arch`
-(see llm/model: "gpt" = TinyGPT, "ssm" = TinySSM) on next-token prediction, saves the checkpoint and prints a few sampled continuations.
+(see llm/model: "gpt" = TinyGPT, "ssm" = TinySSM, "rwkv" = TinyRWKV) on next-token prediction, saves the checkpoint and prints a few sampled continuations.
 
 Hyperparameters come from params.yaml (section `train`); flags override them.
 The checkpoint carries a `meta` record (provenance, params, metrics) and the
@@ -48,6 +48,7 @@ DEFAULTS = {
         "dropout": 0.1,
         "gpt": {"n_head": 4},
         "ssm": {"d_state": 16, "d_conv": 4, "expand": 2},
+        "rwkv": {"ffn_mult": 4},
     },
 }
 

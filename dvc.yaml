@@ -89,4 +89,4 @@ artifacts:
   model:
     path: data/model/model.pt
     type: model
-    desc: TinyGPT or TinySSM (train.model.arch) trained on the versioned corpus; see data/model/model.json for provenance.
+    desc: TinyGPT, TinySSM or TinyRWKV (train.model.arch) trained on the versioned corpus; see data/model/model.json for provenance.

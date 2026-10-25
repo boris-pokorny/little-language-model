@@ -25,7 +25,7 @@ extract:
   num_merges: 1000
 
 train:
-  steps: 200
+  steps: 5000
   patience: 5
   batch_size: 32
   lr: 3.0e-4
@@ -34,11 +34,8 @@ train:
   seed: 1337
   # Architecture (llm/model) and its size. Shared fields first; each
   # architecture's own knobs sit under its name and only that section is used.
-  # At d_model 128 an ssm block has ~0.6x the parameters of a gpt block (no
-  # MLP), so a size-matched comparison uses n_layer 7 for ssm:
-  #   pdm run dvc exp run -S train.model.arch=ssm -S train.model.n_layer=7
   model:
-    arch: gpt          # gpt | ssm
+    arch: gpt          # gpt | ssm | rwkv
     block_size: 64
     n_layer: 7
     d_model: 128
@@ -49,6 +46,8 @@ train:
       d_state: 16      # recurrent state per channel
       d_conv: 4        # causal conv width
       expand: 2        # inner width = expand * d_model
+    rwkv:
+      ffn_mult: 4      # channel-mix hidden width = ffn_mult * d_model
 
 evaluate:
   batch_size: 32

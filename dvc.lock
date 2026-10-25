@@ -106,10 +106,15 @@ stages:
       hash: md5
       md5: 32140a5a1b7e74f0ffbf356008eaa499
       size: 1577
-    - path: llm/model.py
+    - path: llm/checkpoint.py
       hash: md5
-      md5: 0ba983fc4ee927898649df819296a535
-      size: 3230
+      md5: a9e041517d63b27d1564ee6cf82f963d
+      size: 1333
+    - path: llm/model
+      hash: md5
+      md5: bb98977871c63846745556881fc70a5e.dir
+      size: 24036
+      nfiles: 6
     - path: llm/params.py
       hash: md5
       md5: b1b2e586e314358dd4c04282cb7a1fd2
@@ -124,8 +129,8 @@ stages:
       size: 2809
     - path: llm/train_model.py
       hash: md5
-      md5: 69e782a3f253ddccef0ef0b40bbf13f6
-      size: 7792
+      md5: ebe861ca87ba7aa443642a88407e113a
+      size: 8420
     params:
       params.yaml:
         train:
@@ -137,20 +142,28 @@ stages:
           split: 0.9
           seed: 1337
           model:
+            arch: rwkv
             block_size: 64
-            n_layer: 4
-            n_head: 4
+            n_layer: 7
             d_model: 128
             dropout: 0.1
+            gpt:
+              n_head: 4
+            ssm:
+              d_state: 16
+              d_conv: 4
+              expand: 2
+            rwkv:
+              ffn_mult: 4
     outs:
     - path: data/model/model.json
       hash: md5
-      md5: 0e70407db00472b77f92b05dbb7601e8
-      size: 882
+      md5: 78b9a1cc6d2f266ed35a2a5955322bf5
+      size: 1083
     - path: data/model/model.pt
       hash: md5
-      md5: f3af43f8b6dad297000f3017c47c7217
-      size: 4286094
+      md5: bcea93db6c0f555ddcb142860a495290
+      size: 7106339
   evaluate:
     cmd: pdm run evaluate
     deps:
@@ -173,24 +186,29 @@ stages:
       size: 408085
     - path: data/model/model.pt
       hash: md5
-      md5: f3af43f8b6dad297000f3017c47c7217
-      size: 4286094
+      md5: bcea93db6c0f555ddcb142860a495290
+      size: 7106339
     - path: llm/backend.py
       hash: md5
       md5: 32140a5a1b7e74f0ffbf356008eaa499
       size: 1577
     - path: llm/chat.py
       hash: md5
-      md5: abbd96d8f878e9dba1013fb3449251ad
-      size: 8266
+      md5: aa3d2f505d5eff861bf5cc2c23004ddf
+      size: 8071
+    - path: llm/checkpoint.py
+      hash: md5
+      md5: a9e041517d63b27d1564ee6cf82f963d
+      size: 1333
     - path: llm/evaluate.py
       hash: md5
-      md5: 6f26f3b7fc9e0dfa710445e9bcb22123
-      size: 7815
-    - path: llm/model.py
+      md5: fef45cc94d42e6e55651cf80c4493a0b
+      size: 7887
+    - path: llm/model
       hash: md5
-      md5: 0ba983fc4ee927898649df819296a535
-      size: 3230
+      md5: bb98977871c63846745556881fc70a5e.dir
+      size: 24036
+      nfiles: 6
     - path: llm/params.py
       hash: md5
       md5: b1b2e586e314358dd4c04282cb7a1fd2
@@ -205,8 +223,8 @@ stages:
       size: 2809
     - path: llm/train_model.py
       hash: md5
-      md5: 69e782a3f253ddccef0ef0b40bbf13f6
-      size: 7792
+      md5: ebe861ca87ba7aa443642a88407e113a
+      size: 8420
     params:
       params.yaml:
         evaluate:
@@ -218,13 +236,13 @@ stages:
     outs:
     - path: data/metrics/eval.json
       hash: md5
-      md5: 27008000cd8b262a2f231073ecd6326c
-      size: 596
+      md5: 214dffaab8d28eeb1228cdf194e31cee
+      size: 597
     - path: data/metrics/eval_meta.json
       hash: md5
-      md5: 33003960e8b0635a68cff71c107c19a4
-      size: 1681
+      md5: a6a7e20b14c66afe86797fa440e1f93a
+      size: 1906
     - path: data/metrics/samples.md
       hash: md5
-      md5: 147bec47963451993cf007ca994f31bd
-      size: 4071
+      md5: 874f458f90ebc3948d5004997ef7b38d
+      size: 4067

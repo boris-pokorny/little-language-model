@@ -1,6 +1,6 @@
 # little-language-model
 
-A little language model from scratch in plain PyTorch: BPE tokenizer -> transformer or state-space model -> sampling.
+A little language model from scratch in plain PyTorch: BPE tokenizer -> transformer, state-space or RWKV model -> sampling.
 
 Code lives in the `llm` package; the pipeline stages are run as modules via `pdm run`.
 
@@ -18,7 +18,7 @@ pdm install
 pdm run ingest                  # 1. data ingestion:         data/corpus/*.pdf -> data/feature/corpus.txt + vocab.json
 pdm run extract                 # 2. feature extraction:     build BPE merge table -> data/feature/merges.txt
 pdm run tokenize                # 3. feature transformation: tokenize corpus.txt -> data/feature/tokens.txt  (or: pdm run tokenize "some text", or pipe into pdm run tokenize -)
-pdm run train                   # 4. model training:         train TinyGPT or TinySSM (train.model.arch) -> data/model/model.pt (+ model.json card), print samples
+pdm run train                   # 4. model training:         train TinyGPT, TinySSM or TinyRWKV (train.model.arch) -> data/model/model.pt (+ model.json card), print samples
 pdm run evaluate                # 5. model evaluation:       score frozen benchmarks data/bench/*.txt -> data/metrics/eval.json, data/metrics/samples.md
 pdm run chat                    # 5b. inference:             same numbers as evaluate, then prompt -> continuation loop (real words only, --help for decoding knobs)
 pdm run agent "some goal"       # 6. model serving:          simplistic agent, propose K continuations -> critique -> keep best / backtrack, with corpus lookup
@@ -29,11 +29,13 @@ pdm run agent "some goal"       # 6. model serving:          simplistic agent, p
 Or run the whole thing with `pdm run repro` (= `dvc repro`), which only re-runs the stages whose inputs changed.
 
 Parameters (merge count, model size, training schedule, benchmark settings) live in `params.yaml`; CLI flags override them for one-off runs.
-`train.model.arch` picks the architecture: `gpt` (TinyGPT, a decoder-only transformer) or `ssm` (TinySSM, a selective
+`train.model.arch` picks the architecture: `gpt` (TinyGPT, a decoder-only transformer), `ssm` (TinySSM, a selective
 state-space model: the attention + MLP pair of each block is replaced by a gated causal convolution feeding a
-token-dependent linear recurrence, with no positional embedding). Shared size knobs (`n_layer`, `d_model`, `block_size`,
-`dropout`) sit next to `arch`; each architecture's own knobs sit under `train.model.<arch>`. Both share the trainer,
-evaluator, decoding filters and checkpoint format, so the benchmarks compare architectures with everything else fixed.
+token-dependent linear recurrence, with no positional embedding) or `rwkv` (TinyRWKV, an RWKV-4: attention is replaced
+by *time mixing*, a per-channel exponentially decaying weighted average of past values gated by a sigmoid receptance,
+and the MLP by a token-shifted squared-ReLU *channel mixing*; again no positional embedding). Shared size knobs (`n_layer`,
+`d_model`, `block_size`, `dropout`) sit next to `arch`; each architecture's own knobs sit under `train.model.<arch>`. All
+share the trainer, evaluator, decoding filters and checkpoint format, so the benchmarks compare architectures with everything else fixed.
 `train` auto-picks CUDA / MPS / CPU; override with `--device cpu|cuda|mps`, shorten with `--steps N`. Training keeps the best-validation weights and stops early after `--patience` evals without improvement.
 The CPU-only torch wheel is pinned in `pyproject.toml`; remove the `[[tool.pdm.source]]` block on a CUDA machine.
 
@@ -105,6 +107,7 @@ pdm run dvc params diff model-v1 model-v2    # what hyperparameters differed
 git diff model-v1 model-v2 -- data/corpus.dvc params.yaml   # what data / config differed
 pdm run dvc exp run -S train.lr=1e-3         # try a parameter without committing
 pdm run dvc exp run -S train.model.arch=ssm -S train.model.n_layer=7   # the state-space model at matched parameter count
+pdm run dvc exp run -S train.model.arch=rwkv                           # RWKV, already size-matched at n_layer 7
 pdm run dvc exp show                         # table of experiments: params + metrics side by side
 pdm run dvc exp apply <name> / pdm run dvc exp remove   # keep or drop
 ```
@@ -141,9 +144,9 @@ What the repo does not show:
 - LLM application work: no model APIs, RAG, embeddings, tool calling or prompt/evaluation harness.
 - Scale: two books (about 350k training tokens), a 64-token context and a 4-layer, ~1M-parameter model
   (4 MB) that trains in minutes on a CPU. The text it produces is locally plausible, not coherent.
-- Speed: the state-space scan is a plain Python loop over the 64 timesteps (no fused kernel), so `ssm` trains about
-  5x slower per step than `gpt` on a CPU, and generation re-feeds the last 64 tokens instead of carrying the recurrent state, so
-  the constant-memory inference that is the architecture's selling point is not exploited.
+- Speed: the state-space scan and the RWKV time-mix recurrence are plain Python loops over the 64 timesteps (no fused
+  kernel), so `ssm` and `rwkv` train several times slower per step than `gpt` on a CPU, and generation re-feeds the last 64
+  tokens instead of carrying the recurrent state, so the constant-memory inference that is their selling point is not exploited.
 - Deployment and collaboration: no service or container, no DVC remote (artifacts stay in the local cache),
   no tests or CI.
 - A real agent: `llm/agent.py` is a sample-and-rerank loop, as its own docstring says.

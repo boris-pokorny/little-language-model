@@ -1,7 +1,7 @@
 [project]
 name = "little-language-model"
 version = "0.2.0"
-description = "A little language model from scratch in plain PyTorch: BPE tokenizer + tiny transformer"
+description = "A little language model from scratch in plain PyTorch: BPE tokenizer + tiny transformer, state-space or RWKV model"
 authors = [
     {name = "boris", email = "boris.pokorny@centrum.cz"},
 ]

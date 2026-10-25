@@ -1,8 +1,9 @@
 {
+  "arch": "rwkv",
   "provenance": {
     "pipeline_version": "0.2.0",
     "git": {
-      "commit": "d5cd579775259d50bd9a138bc000e2c4f5d28cf2",
+      "commit": "e1458b1c162f40004d65d1d15bc0b35633af31a1",
       "dirty": true
     },
     "inputs": {
@@ -11,7 +12,7 @@
     },
     "python": "3.13.2",
     "torch": "2.14.0+cpu",
-    "created_at": "2026-10-21T11:24:34+00:00"
+    "created_at": "2026-10-25T17:37:57+00:00"
   },
   "params": {
     "steps": 5000,
@@ -22,17 +23,28 @@
     "split": 0.9,
     "seed": 1337,
     "model": {
+      "arch": "rwkv",
       "block_size": 64,
-      "n_layer": 4,
-      "n_head": 4,
+      "n_layer": 7,
       "d_model": 128,
-      "dropout": 0.1
+      "dropout": 0.1,
+      "gpt": {
+        "n_head": 4
+      },
+      "ssm": {
+        "d_state": 16,
+        "d_conv": 4,
+        "expand": 2
+      },
+      "rwkv": {
+        "ffn_mult": 4
+      }
     }
   },
-  "n_params": 1063680,
+  "n_params": 1763456,
   "train_tokens": 348683,
   "val_tokens": 38743,
-  "steps_run": 5000,
-  "best_val_loss": 4.086974401473999,
+  "steps_run": 3700,
+  "best_val_loss": 3.7742849826812743,
   "device": "cpu"
 }
